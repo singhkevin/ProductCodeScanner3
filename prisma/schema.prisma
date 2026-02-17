@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company? @relation(fields: [companyId], references: [id])
+  companyId String?
+  scans     Scan[]
+}
+
+enum Role {
+  ADMIN
+  COMPANY
+  USER
+}
+
+model Company {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  website     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  users       User[]
+  products    Product[]
+  bulkRequests BulkUploadRequest[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  sku         String?
+  batchNumber String?
+  company     Company  @relation(fields: [companyId], references: [id])
+  companyId   String
+  qrCodes     QRCode[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model QRCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  status    QRStatus @default(ACTIVE)
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  scans     Scan[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum QRStatus {
+  ACTIVE
+  INACTIVE
+  VERIFIED
+  REVOKED
+}
+
+model Scan {
+  id        String   @id @default(uuid())
+  qrCode    QRCode?  @relation(fields: [qrCodeId], references: [id])
+  qrCodeId  String?
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  latitude  Float?
+  longitude Float?
+  status    Boolean  @default(false) // true if genuine scan, false if failed/tampered
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+model BulkUploadRequest {
+  id        String         @id @default(uuid())
+  company   Company        @relation(fields: [companyId], references: [id])
+  companyId String
+  filename  String
+  data      Json           // Stores the parsed CSV rows
+  status    ApprovalStatus @default(PENDING)
+  adminNote String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
